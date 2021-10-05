@@ -36,7 +36,7 @@ bool checkСonvexity(size_t numOfPoints, ...) {
 		}
 	}
 	else {
-		throw 1;
+		throw std::invalid_argument("Less then 3 points\n");
 	}
 
 	return true;
