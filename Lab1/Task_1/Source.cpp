@@ -66,6 +66,7 @@ namespace subs {
 
 					shiftBuffer(file, buffer);
 				} 
+				file.close();
 			}
 			else {
 				throw FileException::FileException(("Can't get acces to file " + path + "\n").c_str());
