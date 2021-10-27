@@ -81,6 +81,8 @@ void fromStringToDeceminal(long long* numInDec, const std::string& number, int b
 	long long int multiplier = 1;
 	long long int numLen = number.length();
 
+	*numInDec = 
+	for (int i = 1; i < number.length(); i++) {
 
-	for (int i = 1; i < number.length(); i++)
+	}
 }
