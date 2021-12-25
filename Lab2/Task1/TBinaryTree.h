@@ -2,6 +2,7 @@
 #include <exception>
 #include <string>
 #include <iostream>
+#include <map>
 #include "Data.h"
 #include "Comparator.h"
 
@@ -15,142 +16,290 @@ public:
 
 class find_tree_exception : public tree_exception
 {
+	//find_tree_exception(std::string str) : tree_exception(str) {};
 };
 
+class insert_tree_exception : public tree_exception
+{
+	insert_tree_exception(std::string str) : tree_exception(str) {};
+};
 
-template<typename TKey>
-class TBinaryTree
+class remove_tree_exception : public tree_exception
+{
+	remove_tree_exception(std::string str) : tree_exception(str) {};
+};
+
+template<typename TKey, typename TValue>
+
+class binary_search_tree : public std::map<TKey, TValue>
 {
 protected:
-
-	class Node 
+	struct Node
 	{
-	public:
+		TKey key;
+		const TValue* value;
 		Node* left = nullptr;
 		Node* right = nullptr;
-		const TKey* data = nullptr;
+
+		Node(TKey& _key, const TValue* _value, Node* _left = nullptr, Node* _right = nullptr) {
+			key = _key;
+			value = _value;
+			left = _left;
+			right = _right;
+		}
 	};
 
-	Comparator<TKey> comparator;
-	Node* head = nullptr;
+	class find_template_method_bst
+	{
+	public:
+		TValue& invoke(Node** head, Comparator<TKey>* comparer, const TKey& key) {
+			auto found_node = inner_find(head, comparer, key);
+			after_found(head, comparer, key);
+			return *found_node.value;
+		}
+	private:
+		Node* inner_find(Node** head, Comparator<TKey>* comparer, const TKey& key) {
+			Node* currentNode = head;
+			while (currentNode != nullptr) {
+				if (comparer->compare(currentNode->key, key) > 0) {
+					currentNode = currentNode->right;
+				}
+				else if (comparer->compare(currentNode->key, key) < 0) {
+					currentNode = currentNode->left;
+				}
+				else {
+					return currentNode;
+				}
+			}
 
+			throw find_tree_exception("There is no such key\n");
+		}
+	protected:
+		virtual void after_found(Node* head, Comparator<TKey>* comparer, const TKey& key)
+		{
+			// TODO: по умолчанию метод ничего не делает, но вызывается
+		};
+	};
+	class insert_template_method_bst
+	{
+	public:
+		int invoke(Node** head, Comparator<TKey>* comparer, const TKey& key, TValue* value) {
+			try {
+				inner_insert(head, comparer, key, value);
+				after_insert(head, comparer, key, value);
+				return 0;
+			}
+			catch (const insert_tree_exception& exception) {
+				return 1;
+			}
+		}
+
+	private:
+		void inner_insert(Node** head, Comparator<TKey>* comparer, const TKey& key, const TValue* value) {
+			if (head == nullptr) {
+				*head = new Node(key, value);
+			}
+			else {
+				Node* previousNode = *head;
+				Node* currentNode = *head;
+
+				while (currentNode != nullptr) {
+					if (comparer->compare(currentNode->key, key) > 0) {
+						previousNode = currentNode;
+						currentNode = currentNode->right;
+					}
+					else if (comparer->compare(currentNode->key, key) < 0) {
+						previousNode = currentNode;
+						currentNode = currentNode->left;
+					}
+					else {
+						throw insert_tree_exception("There is similar key in the tree\n");
+					}
+				}
+
+				currentNode = new Node(key, value);
+
+				if (comparer(currentNode->key, key) > 0) {
+					previousNode->right = currentNode;
+				}
+				else {
+					previousNode->left = currentNode;
+				}
+			}
+		}
+	protected:
+		virtual void after_insert(Node* found_node)
+		{
+			// TODO: по умолчанию метод ничего не делает, но вызывается
+		};
+	};
+	class remove_template_method_bst
+	{
+	public:
+		int invoke(Node** head, Comparator<TKey>* comparer, const TKey& key) {
+			try {
+				auto incert = inner_remove(head, comparer, key);
+				after_remove(head, comparer, key);
+				return 0;
+			}
+			catch (const remove_tree_exception& exception) {
+				return 1;
+			}
+		}
+
+	private:
+		Node* inner_remove(Node** head, Comparator<TKey>* comparer, const TKey& key) {
+			Node* current_node = *head;
+			Node* previous_node = *head;
+
+			while (current_node != nullptr) {
+				if (comparer->compare(current_node->key, key) > 0) {
+					previous_node = current_node;
+					current_node = current_node->right;
+				}
+				else if (comparer->compare(current_node->key, key) < 0) {
+					previous_node = current_node;
+					current_node = current_node->left;
+				}
+				else {
+					break;
+				}
+			}
+
+			if (current_node == nullptr) {
+				throw find_tree_exception(std::string("There is no such key\n"));
+			}
+
+			if (current_node->left == nullptr) {
+				if (comparer->compare(previous_node->key, current_node->key) > 0) {
+					previous_node->right = current_node->right;
+				}
+				else {
+					previous_node->left = current_node->right;
+				}
+
+				delete current_node;
+			}
+			else if (current_node->right == nullptr) {
+				if (comparer->compare(previous_node->key, current_node->key) > 0) {
+					previous_node->right = current_node->left;
+				}
+				else {
+					previous_node->left = current_node->left;
+				}
+
+				delete current_node;
+			}
+			else {
+				Node* previous_node_trans = current_node;
+				current_node = current_node->right;
+
+				while (current_node->left != nullptr)
+				{
+					previous_node_trans = current_node;
+					current_node = current_node->right;
+				}
+
+				previous_node_trans->right = nullptr;
+
+				if (comparer->compare(previous_node->key, current_node->key) > 0) {
+					delete previous_node->right;
+					previous_node->right = current_node;
+				}
+				else {
+					delete previous_node->left;
+					previous_node->left = current_node;
+				}
+			}
+
+		}
+	protected:
+		virtual void after_remove(Node** head, Comparator<TKey>* comparer, const TKey& key)
+		{
+			// TODO: по умолчанию метод ничего не делает, но вызывается
+		};
+	};
+private:
+	find_template_method_bst _finder;
+	insert_template_method_bst _inserter;
+	remove_template_method_bst _remover;
+	Comparator<TKey>* _comparer;
+protected:
+	Node* head;
+
+	void copy_bypass(Node* node) {
+		if (node != nullptr) {
+			this->insert(node->key, node->value);
+			copy_bypass(node->right);
+			copy_bypass(node->left);
+		}
+	};
+
+	void delete_bypass(Node* node) {
+		if (node != nullptr) {
+			delete_bypass(node->right);
+			delete_bypass(node->left);
+			this->remove(node->key);
+		}
+	}
 public:
-	TBinaryTree(Comparator<TKey>& comparator) {
-		this->comparator = comparator;
+	binary_search_tree(Comparator<TKey>* comparer) {
+		_finder = find_template_method_bst();
+		_inserter = insert_template_method_bst();
+		_remover = remove_template_method_bst();
+		_comparer = comparer;
 	};
 
-	virtual void preInsert() = 0;
-
-	virtual void postInsert() = 0;
-
-	int insert(const TKey& data) {
-
-		Node* currentNode = nullptr;
-		Node* previousNode = nullptr;
-
-		try {
-			preInsert();
-
-			if (head == nullptr) {
-				head = new Node;
-				head->data = &data;
-			}
-			else {
-				currentNode = head;
-
-				while (currentNode != nullptr) {
-
-					if (comparator.compare(data, *(currentNode->data)) > 0) {
-						previousNode = currentNode;
-						currentNode = currentNode->left;
-
-						if (currentNode == nullptr) {
-							previousNode->left = new Node;
-							previousNode->left->data = &data;
-						}
-					}
-					else if (comparator.compare(data, *(currentNode->data)) < 0) {
-						previousNode = currentNode;
-						currentNode = currentNode->right;
-
-						if (currentNode == nullptr) {
-							previousNode->right = new Node;
-							previousNode->right->data = &data;
-						}
-					}
-					else if (comparator.compare(data, *(currentNode->data)) == 0) {
-						throw tree_exception(std::string("Insert error. Detected data with the same key.\m"));
-					}
-					else {
-						throw tree_exception("Something get wrong while insertion.\n");
-					}
-				}
-
-
-			}
-
-			postInsert();
-		}
-		catch (tree_exception exc)
-		{
-			std::cerr << exc.what();
-			return 1;
-		}
-		return 0;
+	binary_search_tree(binary_search_tree& tree) {
+		copy_bypass(*head);
 	};
 
-	int find(const TKey& data) {
-		Node* currentNode = nullptr;
-		Node* previousNode = nullptr;
+	binary_search_tree& operator=(binary_search_tree& tree) {
+		binary_search_tree res(tree);
+		delete_bypass(head);
+		*this = res;
+		return *this;
+	};
 
-		try {
-			preInsert();
+	~binary_search_tree() {
+		delete_bypass(head);
+	};
+	TValue& find(const TKey& by)
+	{
+		return _finder.invoke(&head, _comparer, by);
+	}
 
-			if (head == nullptr) {
-				throw tree_exception("")
-			}
-			else {
-				currentNode = head;
+	void insert(const TKey& by, const TValue* target)
+	{
+		_inserter.invoke(&head, _comparer, by, target);
+	}
 
-				while (currentNode != nullptr) {
+	TValue remove(const TKey& by)
+	{
+		return _remover.invoke(&head, _comparer, by);
+	}
 
-					if (comparator.compare(data, *(currentNode->data)) > 0) {
-						previousNode = currentNode;
-						currentNode = currentNode->left;
-
-						if (currentNode == nullptr) {
-							previousNode->left = new Node;
-							previousNode->left->data = &data;
-						}
-					}
-					else if (comparator.compare(data, *(currentNode->data)) < 0) {
-						previousNode = currentNode;
-						currentNode = currentNode->right;
-
-						if (currentNode == nullptr) {
-							previousNode->right = new Node;
-							previousNode->right->data = &data;
-						}
-					}
-					else if (comparator.compare(data, *(currentNode->data)) == 0) {
-						throw tree_exception(std::string("Insert error. Detected data with the same key.\m"));
-					}
-					else {
-						throw tree_exception("Something get wrong while insertion.\n");
-					}
-				}
-
-
-			}
-
-			postInsert();
+	void prefix_bypass(void (*function) (TKey, TValue*, int), Node* node = head, int depth = 0) {
+		if (node != nullptr) {
+			function(node->key, node->value, depth);
+			prefix_bypass(function, node->left, depth + 1);
+			prefix_bypass(function, node->right, depth + 1);
 		}
-		catch (tree_exception exc)
-		{
-			std::cerr << exc.what();
-			return 1;
+	}
+
+	void infix_bypass(void (*function) (TKey, TValue*, int), Node* node = head, int depth = 0) {
+		if (node != nullptr) {
+			prefix_bypass(function, node->left, depth + 1);
+			function(node->key, node->value, depth);
+			prefix_bypass(function, node->right, depth + 1);
 		}
-		return 0;
+	}
+
+	void postfix_bypass(void (*function) (TKey, TValue*, int), Node* node = head, int depth = 0) {
+		if (node != nullptr) {
+			prefix_bypass(function, node->left, depth + 1);
+			prefix_bypass(function, node->right, depth + 1);
+			function(node->key, node->value, depth);
+		}
 	}
 };
-
